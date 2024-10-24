@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="demo.css" />
+    <title>Zylo | Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+    <link rel="icon" href="../img/logo.svg" type="image/x-icon" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
+  </head>
+
+  <body>
+    <header>
+      <img src="../img/logo-h.png" />
+      <div
+        class="back"
+        onclick="player.classList.remove('expanded'); this.style.display = 'none';"
+        id="back"
+      >
+        <img src="../img/back.png" />
+      </div>
+    </header>
+    <div class="cover">
+      <img src="../img/demo.jpg" />
+      <div class="text">
+        <h2>Zylo | Demo</h2>
+        <p>Colección</p>
+      </div>
+    </div>
+    <div class="input">
+      <input type="text" placeholder="Buscar" />
+      <img src="../img/search.png" />
+    </div>
+    <div class="songs" id="songsContainer"></div>
+    <div class="player hidden" id="player">
+      <img
+        src="./img/covers/eres-diamante.jpg"
+        class="bg_img"
+        id="player-bg-img"
+      />
+      <div class="deg"></div>
+      <div class="wrapper">
+        <div>
+          <img
+            src="./img/covers/eres-diamante.jpg"
+            class="img"
+            id="player-img"
+          />
+          <div class="info">
+            <div>
+              <b id="player-song-name">Nombre de la canción</b>
+              <p id="player-artist">Artista</p>
+            </div>
+          </div>
+          <div class="slider-container">
+            <input
+              type="range"
+              class="slider"
+              id="songSlider"
+              min="0"
+              value="0"
+              step="1"
+            />
+            <div class="slider-progress" id="sliderProgress"></div>
+          </div>
+          <span id="currentTime">0:00</span>
+          <span id="totalTime">0:00</span>
+          <div class="controls">
+            <img src="../img/prev.png" class="prev" id="player-prev" />
+            <img src="../img/play.png" id="player-play" />
+            <img src="../img/next.png" class="next" id="player-next" />
+          </div>
+        </div>
+      </div>
+      <audio id="player-audio" controls style="display: none"></audio>
+    </div>
+  </body>
+  <script>
+    // Array de canciones
+    const songs = [
+      {
+        id: 1,
+        nombre: "Ojos Noche",
+        img: "./img/covers/eres-diamante.jpg",
+        artista: "Elsa Y Elmar",
+        src: "./songs/1.mp3",
+      },
+      {
+        id: 2,
+        nombre: "Suéltame, Bogotá",
+        img: "./img/covers/diamante.jpg",
+        artista: "Diamante Eléctrico",
+        src: "./songs/2.mp3",
+      },
+      {
+        id: 3,
+        nombre: "Grecia",
+        img: "./img/covers/grecia.jpg",
+        artista: "Elsa Y Elmar",
+        src: "./songs/3.mp3",
+      },
+      {
+        id: 4,
+        nombre: "palacio <3",
+        img: "./img/covers/palacio.jpg",
+        artista: "Elsa Y Elmar",
+        src: "./songs/4.mp3",
+      }
+      // Agrega más canciones aquí...
+    ];
+
+    // Función para generar y agregar las canciones al contenedor
+    function generateSongs(songsArray) {
+      const container = document.getElementById("songsContainer");
+
+      songsArray.forEach((song) => {
+        const songElement = document.createElement("div");
+        songElement.className = "song";
+        songElement.setAttribute("data-id", song.id);
+        songElement.setAttribute("data-img", song.img);
+        songElement.setAttribute("data-nombre", song.nombre);
+        songElement.setAttribute("data-artista", song.artista);
+        songElement.setAttribute("data-src", song.src);
+
+        songElement.innerHTML = `
+            <img src="${song.img}" alt="${song.nombre}">
+            <div class="info">
+                <div>
+                    <b>${song.nombre}</b>
+                    <p>${song.artista}</p>
+                </div>
+            </div>
+            <audio controls style="display: none;">
+                <source src="${song.src}" type="audio/mpeg">
+            </audio>
+        `;
+
+        container.appendChild(songElement);
+      });
+    }
+
+    // Llama a la función para generar las canciones
+    generateSongs(songs);
+
+    window.onload = function () {
+      var songs = document.getElementsByClassName("song");
+      var player = document.getElementById("player");
+      var playerImg = document.getElementById("player-img");
+      var playerBgImg = document.getElementById("player-bg-img");
+      var playerSongName = document.getElementById("player-song-name");
+      var playerArtist = document.getElementById("player-artist");
+      var playerAudio = document.getElementById("player-audio");
+      var playerPlayButton = document.getElementById("player-play");
+      var songSlider = document.getElementById("songSlider");
+      var sliderProgress = document.getElementById("sliderProgress");
+      var playerPrevButton = document.getElementById("player-prev");
+      var playerNextButton = document.getElementById("player-next");
+      var colorThief = new ColorThief();
+      var isPlayerExpanded = false;
+      var currentTimeElement = document.getElementById("currentTime");
+      var totalTimeElement = document.getElementById("totalTime");
+      var back = document.getElementById("back");
+      var currentSongIndex = -1; // Inicializamos sin seleccionar ninguna canción
+
+      function updateNavigationButtons() {
+        playerPrevButton.style.opacity = currentSongIndex > 0 ? "1" : "0";
+        playerNextButton.style.opacity =
+          currentSongIndex < songs.length - 1 ? "1" : "0";
+      }
+
+      function loadSong(songIndex) {
+        if (songIndex < 0 || songIndex >= songs.length) {
+          return; // No cargar si el índice es inválido
+        }
+        var song = songs[songIndex];
+        var imgSrc = song.getAttribute("data-img");
+        var songName = song.getAttribute("data-nombre");
+        var artist = song.getAttribute("data-artista");
+        var songSrc = song.getAttribute("data-src");
+        var spoLink = song.getAttribute("data-spo");
+        var ytLink = song.getAttribute("data-yt");
+
+        playerImg.src = imgSrc;
+        playerBgImg.src = imgSrc;
+        playerSongName.textContent = songName;
+        playerArtist.textContent = artist;
+        playerAudio.src = songSrc;
+        playerAudio.play();
+        playerPlayButton.src = "../img/pause.png";
+
+        // Update player UI
+        for (var i = 0; i < songs.length; i++) {
+          songs[i].classList.remove("playing");
+        }
+        song.classList.add("playing");
+        player.classList.remove("hidden");
+
+        updateNavigationButtons();
+
+        // Load dominant color
+        var img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = imgSrc;
+        img.onload = function () {
+          console.log(img);
+          var dominantColor = colorThief.getColor(img);
+          var darkenedColor = darkenColor(dominantColor, -0.3);
+          player.style.backgroundColor = "rgb(" + darkenedColor.join(",") + ")";
+          songSlider.style.background = "rgb(" + dominantColor.join(",") + ")";
+          sliderProgress.style.background =
+            "rgb(" + dominantColor.join(",") + ")";
+        };
+      }
+
+      // Event listeners for prev and next buttons
+      playerPrevButton.addEventListener("click", function () {
+        if (currentSongIndex > 0) {
+          currentSongIndex--;
+          loadSong(currentSongIndex);
+        }
+      });
+
+      playerNextButton.addEventListener("click", function () {
+        if (currentSongIndex < songs.length - 1) {
+          currentSongIndex++;
+          loadSong(currentSongIndex);
+        }
+      });
+
+      // Update the current time as the song plays
+      playerAudio.addEventListener("timeupdate", function () {
+        var minutes = Math.floor(playerAudio.currentTime / 60);
+        var seconds = Math.floor(playerAudio.currentTime % 60);
+        currentTimeElement.textContent =
+          minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+      });
+
+      // Update the total time when a new song is loaded
+      playerAudio.addEventListener("loadedmetadata", function () {
+        var minutes = Math.floor(playerAudio.duration / 60);
+        var seconds = Math.floor(playerAudio.duration % 60);
+        totalTimeElement.textContent =
+          minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+      });
+
+      playerAudio.addEventListener("timeupdate", function () {
+        songSlider.max = playerAudio.duration;
+        songSlider.value = playerAudio.currentTime;
+        updateSliderProgress();
+      });
+
+      songSlider.addEventListener("input", function () {
+        playerAudio.currentTime = songSlider.value;
+        updateSliderProgress();
+      });
+
+      player.addEventListener("click", function (event) {
+        if (event.target !== playerPlayButton) {
+          if (!isPlayerExpanded) {
+            player.classList.add("expanded");
+            back.style.display = "block";
+          } else {
+          }
+        }
+      });
+
+      function darkenColor(color, percent) {
+        var f = color.map(function (value) {
+            return value / 255.0;
+          }),
+          t = percent < 0 ? 0 : 255,
+          p = percent < 0 ? percent * -1 : percent,
+          R = Math.round((t - f[0] * 255) * p) + f[0] * 255,
+          G = Math.round((t - f[1] * 255) * p) + f[1] * 255,
+          B = Math.round((t - f[2] * 255) * p) + f[2] * 255;
+        return [R, G, B];
+      }
+
+      function updateSliderProgress() {
+        var value = (songSlider.value / songSlider.max) * 100;
+        sliderProgress.style.width = value + "%";
+      }
+
+      for (var i = 0; i < songs.length; i++) {
+        (function (index) {
+          songs[index].addEventListener("click", function () {
+            currentSongIndex = index;
+            loadSong(currentSongIndex);
+          });
+        })(i);
+      }
+
+      playerPlayButton.addEventListener("click", function () {
+        if (playerAudio.paused) {
+          playerAudio.play();
+          playerPlayButton.src = "../img/pause.png";
+        } else {
+          playerAudio.pause();
+          playerPlayButton.src = "../img/play.png";
+        }
+      });
+    };
+  </script>
+</html>
